@@ -1,6 +1,7 @@
 # ✈️ Flight Ticket Price Prediction
 
 This project demonstrates a complete machine learning pipeline for predicting airline ticket prices based on various flight parameters. It includes data preprocessing, model training using AutoGluon, and deployment of a lightweight web application built with Flask.
+👉 Try it here: [flightml.xyz](https://www.flightml.xyz/)
 
 ## 📊 Dataset & Preprocessing
 
@@ -27,7 +28,7 @@ Models were trained using **AutoGluon TabularPredictor**, which automatically tr
 
 Two main configurations were used:
 
-### Full model (local, no deployment):
+### Full model (local, no deployment, not included in this repository):
 - Preset: `best_quality`
 - Includes bagging and stacking (3 levels)
 - Top models: `WeightedEnsemble_L3`, `LightGBM_BAG_L2`
