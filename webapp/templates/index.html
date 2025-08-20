@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="title">Predykcja ceny biletu lotniczego</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <button type="button" class="lang-btn" data-lang="pl" title="Polski">
+            <img src="{{ url_for('static', filename='pl.png') }}" alt="PL">
+        </button>
+        <button type="button" class="lang-btn" data-lang="en" title="English">
+            <img src="{{ url_for('static', filename='gb.png') }}" alt="EN">
+        </button>
+    </div>
+
+    <h1 id="title_headline">Predykcja ceny biletu</h1>
+
+    <form id="predictForm">
+
+        <label><span id="label-class">Klasa:</span></label>
+        <div>
+            <label><input type="radio" name="class" value="economy" required /> Economy</label>
+            <label><input type="radio" name="class" value="business" required /> Business</label>
+        </div>
+
+        <label><span id="label-date">Data lotu:</span>
+            <input type="date" name="date" id="dateInput" required />
+        </label>
+
+        <label><span id="label-airline">Linia lotnicza:</span>
+            <input type="text" name="airline" list="airlines" required />
+        </label>
+        <datalist id="airlines">
+            <option value="Air India">
+            <option value="Vistara">
+            <option value="Indigo">
+            <option value="GO FIRST">
+            <option value="AirAsia">
+        </datalist>
+
+        <label><span id="label-dep-time">Godzina odlotu (HH:MM):</span>
+            <input type="time" name="dep_time" required />
+        </label>
+
+        <label><span id="label-departure_city">Miasto wylotu:</span>
+            <input list="cities" type="text" name="departure_city" required />
+        </label>
+
+        <label><span id="label-stop">Liczba przesiadek (0-2):</span>
+            <input type="number" name="stop" min="0" max="2" required />
+        </label>
+
+        <label><span id="label-arr-time">Godzina przylotu (HH:MM):</span>
+            <input type="time" name="arr_time" required />
+        </label>
+
+        <label><span id="label-arrival_city">Miasto docelowe:</span>
+            <input type="text" name="arrival_city" list="cities" required />
+        </label>
+        <datalist id="cities">
+            <option value="Delhi">
+            <option value="Mumbai">
+            <option value="Bangalore">
+            <option value="Kolkata">
+            <option value="Hyderabad">
+        </datalist>
+
+        <button type="submit" id="submit-button">Oblicz cenę</button>
+    </form>
+
+    <div id="result"></div>
+
+    <p id="note" class="info-text">
+        Ten program jest częścią pracy inżynierskiej. Ze względu na użycie darmowego hostingu, pierwsze zapytanie może
+        wiązać się z dłuższym czasem oczekiwania (nawet do kilkudziesięciu sekund).
+    </p>
+
+    <script>
+        const translations = {
+            pl: {
+                title: "Predykcja ceny biletu",
+                "title_headline": "Predykcja ceny biletu",
+                "label-class": "Klasa:",
+                "label-date": "Data lotu:",
+                "label-airline": "Linia lotnicza:",
+                "label-dep-time": "Godzina odlotu (HH:MM):",
+                "label-departure_city": "Miasto wylotu:",
+                "label-stop": "Liczba przesiadek (0-2):",
+                "label-arr-time": "Godzina przylotu (HH:MM):",
+                "label-arrival_city": "Miasto docelowe:",
+                "submit-button": "Oblicz cenę",
+                "note": "Ten program jest częścią pracy inżynierskiej. Ze względu na użycie darmowego hostingu, pierwsze zapytanie może wiązać się z dłuższym czasem oczekiwania (nawet do kilkudziesięciu sekund)."
+            },
+            en: {
+                title: "Flight Price Prediction",
+                "title_headline": "Flight Price Prediction",
+                "label-class": "Class:",
+                "label-date": "Departure date:",
+                "label-airline": "Airline:",
+                "label-dep-time": "Departure time (HH:MM):",
+                "label-departure_city": "Departure city:",
+                "label-stop": "Number of stops (0-2):",
+                "label-arr-time": "Arrival time (HH:MM):",
+                "label-arrival_city": "Arrival city:",
+                "submit-button": "Calculate price",
+                "note": "This program is part of an engineering thesis project. Due to the use of free hosting, the first prediction request may take up to several dozen seconds."
+            }
+
+        };
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lang = btn.getAttribute('data-lang');
+                const labels = translations[lang];
+
+                // 🔄 Zaktualizuj atrybut lang w <html>
+                document.documentElement.lang = lang;
+
+                // 🔁 Zmień teksty etykiet
+                for (const id in labels) {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = labels[id];
+                }
+            });
+        });
+
+
+        document.getElementById("predictForm").onsubmit = async function (event) {
+            event.preventDefault();
+
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = '<div class="loader"></div>';
+
+            // wykrycie aktualnego języka
+            const currentLang = document.documentElement.lang || "pl";
+
+            // komunikaty
+            const messages = {
+                pl: {
+                    error_generic: "Wystąpił błąd. Spróbuj ponownie.",
+                    error_server: "Błąd serwera: ",
+                },
+                en: {
+                    error_generic: "An error occurred. Please try again.",
+                    error_server: "Server error: ",
+                },
+            };
+
+            try {
+                const formData = new FormData(this);
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    const detail = errData.details || "";
+                    resultDiv.innerText = messages[currentLang].error_server + detail;
+                    console.error("Backend returned error:", response.status, detail);
+                    return;
+                }
+
+                const result = await response.json();
+                resultDiv.innerText = result.prediction.toFixed(2) + " PLN";
+            } catch (error) {
+                resultDiv.innerText = messages[currentLang].error_generic;
+                console.error("Unexpected error:", error);
+            }
+        };
+
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("dateInput").setAttribute("min", today);
+    </script>
+</body>
+
+</html>
